@@ -18,13 +18,16 @@ class MifareTagTester {
                 if (classic.authenticateSectorWithKeyA(i, MifareClassic.KEY_DEFAULT)) {
                     Log.d("nfc", "Authenticated sector $i")
                     val blockIndex = classic.sectorToBlock(i)
-                    val blockString = "$tagText"
                     // Complete the block with spaces
-                    val blockStringPadded = blockString.padEnd(MifareClassic.BLOCK_SIZE, ' ')
+                    val blockStringPadded = tagText.padEnd(MifareClassic.BLOCK_SIZE, ' ')
                     val blockBytes = blockStringPadded.toByteArray(Charsets.US_ASCII)
-                    Log.d("nfc", "Writing $blockString to block $blockIndex as bytes $blockBytes")
+                    Log.d("nfc", "Writing $tagText to block $blockIndex as bytes $blockBytes")
                     classic.writeBlock(blockIndex, blockBytes)
-                    return "Writing $blockString to block $blockIndex as bytes ${blockBytes.toString(Charsets.US_ASCII)}"
+                    return "Writing $tagText to block $blockIndex as bytes ${
+                        blockBytes.toString(
+                            Charsets.US_ASCII
+                        )
+                    }"
                 }
             }
         }
@@ -41,7 +44,7 @@ class MifareTagTester {
                         val blockIndex = mifare.sectorToBlock(i)
                         val block = mifare.readBlock(blockIndex)
                         val blockString = String(block, Charset.forName("US-ASCII"))
-                        result += "$blockString\n"
+                        result += "block: $blockIndex -> $blockString\n"
                     }
                 }
 
@@ -65,8 +68,7 @@ class MifareTagTester {
 
     fun getUUID(tag: Tag): String? {
         return MifareClassic.get(tag)?.use { mifare ->
-            val uuid = mifare.tag.id.joinToString("") { "%02X".format(it) }
-            return uuid.toString()
+            return mifare.tag.id.joinToString("") { "%02X".format(it) }
         }
     }
 }
