@@ -102,42 +102,44 @@ class MainActivity : ComponentActivity() {
                         TagIndicator(viewModel = tagViewModel)
                     }
                 }
-
             }
         }
 
         try {
+            // Requisitar o adaptador NFC padrão para este dispositivo
             nfcAdapter = NfcAdapter.getDefaultAdapter(this)
 
+            // Criar um intent para quando o NFC for descoberto
             val intent = Intent(this, javaClass).apply {
                 addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
             }
-            var pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent,
+            val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent,
                 PendingIntent.FLAG_MUTABLE)
-
             if (nfcAdapter != null) {
+                // Habilitar o NFC
                 nfcAdapter?.enableForegroundDispatch(this, pendingIntent, null, null)
             }
-
         } catch (e: Exception) {
             Log.e("nfc", e.toString())
         }
     }
 
+    // Quando a atividade for retomada, definir o intent para o adaptador NFC
     override fun onResume() {
         super.onResume()
-
-        // Fix null pointer exception
+        // Criar um intent para quando o NFC for descoberto
         if (pendingIntent == null) {
             pendingIntent = PendingIntent.getActivity(this, 0, Intent(this, javaClass).apply {
                 addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
             }, PendingIntent.FLAG_MUTABLE)
         }
+        // Habilitar o NFC
         if (nfcAdapter != null) {
             nfcAdapter?.enableForegroundDispatch(this, pendingIntent, null, null)
         }
     }
 
+    // Quando a atividade for pausada, desabilitar o NFC
     override fun onPause() {
         super.onPause()
         if (nfcAdapter != null) {
@@ -150,29 +152,21 @@ class MainActivity : ComponentActivity() {
         logViewModel.addLog(message)
     }
 
+    // Quando um novo intent for recebido (quando o NFC for descoberto)
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         Log.d("nfc", intent.toString())
-        if (NfcAdapter.ACTION_NDEF_DISCOVERED == intent.action) {
-            val rawMessages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)
-            val messages: List<NdefMessage> = rawMessages?.map { it as NdefMessage } ?: emptyList()
-            Log.d("nfc", messages.toString())
-        }
         if (NfcAdapter.ACTION_TAG_DISCOVERED == intent.action) {
+            // Obter o tag descoberto
             val tag: Tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)!!
             tag?.let { tagViewModel.addTag(it) }
             Log.d("nfc", tag.toString())
-            val tagId = tag?.id
+            val tagId = tag.id
             Log.d("nfc", tagId.toString())
-
-
-            val tagTechList = tag?.techList
+            val tagTechList = tag.techList
             Log.d("nfc", tagTechList.toString())
-
             val tagTech = tagTechList?.get(0)
             Log.d("nfc", tagTech.toString())
-
-
         }
     }
 }
@@ -181,36 +175,34 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun TagIndicator(viewModel: TagViewModel, lifecycleOwner: LifecycleEventObserver? = null) {
-    val text = remember {mutableStateOf("Waiting for tag...")}
-    viewModel.tagList.observe(LocalLifecycleOwner.current) {
+    val text = remember {mutableStateOf("Waiting for tag...")} // Esperando por tag...
+    viewModel.tagList.observe(LocalLifecycleOwner.current) { // Observar a lista de tags
         Log.d("nfcView", "tagList changed")
-        val lastTag = it.lastOrNull()
+        val lastTag = it.lastOrNull() // Obter a última tag encontrada
         if (it == null || it.isEmpty()) {
             text.value = "Waiting for tag..."
         } else {
-            var result = MifareTagTester().getUUID(lastTag!!) + "\n"
+            var result = MifareTagTester().getUUID(lastTag!!) + "\n" // Obter o UUID da tag
             result += "\n"
-            for (tech in lastTag?.techList!!) {
-                result += "Has tech: $tech\n"
+            for (tech in lastTag.techList!!) { // Obter a lista de tecnologias da tag
+                result += "Has tech: $tech\n" // Tem tecnologia X
             }
-            text.value = result
-            try {
-                if (lastTag != null) {
-                    result += MifareTagTester().getInfo(lastTag) + "\n"
-                    Log.d("nfc", text.toString())
+            text.value = result // Atualizar o texto
+            try { // Tentar ler/escrever na tag
+                result += MifareTagTester().getInfo(lastTag) + "\n" // Obter informações da tag
+                Log.d("nfc", text.toString())
 
-                    result += MifareTagTester().readTag(lastTag) + "\n"
-                    Log.d("nfc", text.toString())
+                result += MifareTagTester().readTag(lastTag) + "\n" // Ler a tag
+                Log.d("nfc", text.toString())
 
-                    result += MifareTagTester().writeTag(lastTag, "Projeto de Redes", 2) + "\n"
-                    Log.d("nfc", text.toString())
-                }
+                result += MifareTagTester().writeTag(lastTag, "Projeto de Redes", 2) + "\n" // Escrever na tag
+                Log.d("nfc", text.toString())
             } catch (e: Exception) {
                 Log.e("nfc", e.toString())
                 result += "Error: $e"
             }
 
-            text.value = result
+            text.value = result // Atualizar o texto
         }
     }
     if (viewModel.tagList.value == null || viewModel.tagList.value!!.isEmpty()) {
